@@ -1,6 +1,7 @@
 // version_proxy.cpp
 // Forwards all version.dll exports to the real system DLL.
-// Deliberately does NOT include <windows.h> to avoid winver.h conflicts.
+// Does not include <windows.h> to avoid winver.h conflicts.
+// NOTE: naked __asm jmp stubs are x86-only — must be compiled as 32-bit.
 
 extern "C" {
     unsigned long __stdcall GetSystemDirectoryA(char* buf, unsigned long size);

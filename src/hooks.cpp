@@ -39,12 +39,18 @@ static std::string NormalizeW(const wchar_t* path) {
     const wchar_t* sep = wcsrchr(path, L'\\');
     if (!sep) sep = wcsrchr(path, L'/');
     const wchar_t* start = sep ? sep + 1 : path;
-    std::string name;
-    for (const wchar_t* p = start; *p; ++p)
-        name += static_cast<char>(toupper(static_cast<unsigned char>(*p)));
+
+    // Convert to UTF-8 — avoids truncating non-ASCII characters with a narrow cast.
+    int len = WideCharToMultiByte(CP_UTF8, 0, start, -1, nullptr, 0, nullptr, nullptr);
+    std::string name(len - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, start, -1, &name[0], len, nullptr, nullptr);
+
+    for (char& c : name)
+        c = static_cast<char>(toupper(static_cast<unsigned char>(c)));
     return name;
 }
 
+// Returns a virtual handle if filename is in a fanpatch, INVALID_HANDLE_VALUE otherwise.
 static HANDLE TryPatch(const std::string& name) {
     if (!PatchArchive::Has(name)) return INVALID_HANDLE_VALUE;
     auto data = PatchArchive::Extract(name);

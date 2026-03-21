@@ -9,6 +9,7 @@ std::vector<mz_zip_archive>                          PatchArchive::s_archives;
 std::vector<std::string>                             PatchArchive::s_names;
 std::unordered_map<std::string, PatchArchive::Entry> PatchArchive::s_index;
 
+// Strips directory prefix and uppercases — matches how the engine requests assets.
 std::string PatchArchive::Normalize(const std::string& name) {
     size_t sep = name.find_last_of("/\\");
     std::string out = (sep != std::string::npos) ? name.substr(sep + 1) : name;
@@ -31,7 +32,7 @@ static std::string BaseName(const std::wstring& path) {
     return WideToUtf8(name);
 }
 
-// Use FindFirstFileW/FindNextFileW so Japanese/Unicode directory names work.
+// Wide API to support non-ASCII directory names.
 static std::vector<std::wstring> FindFanpatches(const std::wstring& gameDir) {
     std::vector<std::wstring> results;
     WIN32_FIND_DATAW fd;
@@ -42,7 +43,7 @@ static std::vector<std::wstring> FindFanpatches(const std::wstring& gameDir) {
             results.push_back(gameDir + fd.cFileName);
     } while (FindNextFileW(h, &fd));
     FindClose(h);
-    std::sort(results.begin(), results.end());
+    std::sort(results.begin(), results.end()); // alphabetical — last file wins on conflicts
     return results;
 }
 
@@ -56,7 +57,7 @@ void PatchArchive::LoadAll(const std::wstring& gameDir) {
     for (size_t i = 0; i < files.size(); ++i) {
         s_names[i] = BaseName(files[i]);
 
-        // miniz needs a UTF-8 path on Windows for unicode paths
+        // miniz expects UTF-8 paths.
         std::string utf8path = WideToUtf8(files[i]);
 
         mz_zip_archive& zip = s_archives[i];
@@ -68,7 +69,7 @@ void PatchArchive::LoadAll(const std::wstring& gameDir) {
             if (mz_zip_reader_is_file_a_directory(&zip, j)) continue;
             char fname[512];
             mz_zip_reader_get_filename(&zip, j, fname, sizeof(fname));
-            s_index[Normalize(fname)] = { i, j, s_names[i] };
+            s_index[Normalize(fname)] = { i, j, s_names[i] }; // intentional overwrite — last archive wins
         }
     }
 }
@@ -87,6 +88,15 @@ std::vector<uint8_t> PatchArchive::Extract(const std::string& filename) {
     mz_zip_archive& zip = s_archives[it->second.archiveIndex];
     mz_zip_archive_file_stat stat;
     if (!mz_zip_reader_file_stat(&zip, it->second.fileIndex, &stat)) return result;
+
+    // Reject entries with an absurd declared size — limits a single extraction,
+    // not the total archive. Override at compile time with -DMAX_ASSET_SIZE_MB=N.
+#ifndef MAX_ASSET_SIZE_MB
+#define MAX_ASSET_SIZE_MB 512
+#endif
+    static constexpr size_t MAX_ASSET_SIZE = static_cast<size_t>(MAX_ASSET_SIZE_MB) * 1024 * 1024;
+    if (stat.m_uncomp_size > MAX_ASSET_SIZE)
+        return result;
 
     result.resize(static_cast<size_t>(stat.m_uncomp_size));
     if (!mz_zip_reader_extract_to_mem(&zip, it->second.fileIndex,
