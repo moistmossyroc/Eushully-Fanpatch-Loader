@@ -28,10 +28,6 @@ target_link_libraries(version PRIVATE
     "${CMAKE_SOURCE_DIR}/deps/minhook/lib/libMinHook.x86.lib"
 )
 
-set_target_properties(version PROPERTIES
-    OUTPUT_NAME "version"
-    PREFIX ""
-    MSVC_RUNTIME_LIBRARY "MultiThreaded"
-)
+set_target_properties(version PROPERTIES OUTPUT_NAME "version" PREFIX "")
 
-target_link_options(version PRIVATE /INCREMENTAL:NO)
+target_link_options(version PRIVATE /INCREMENTAL:NO /ignore:4098)
