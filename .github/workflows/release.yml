@@ -16,18 +16,18 @@ jobs:
       -
         name: Install MinHook
         run: |
-          $url = "https://github.com/TsudaKageyu/minhook/releases/download/v1.3.3/MinHook_133_bin.zip"
+          $url = "https://github.com/TsudaKageyu/minhook/releases/download/v1.3.4/MinHook_134_lib.zip"
           Invoke-WebRequest -Uri $url -OutFile minhook.zip
-          Expand-Archive -Path minhook.zip -DestinationPath minhook_bin
+          Expand-Archive -Path minhook.zip -DestinationPath minhook_lib
           New-Item -ItemType Directory -Path deps/minhook/include -Force
           New-Item -ItemType Directory -Path deps/minhook/lib -Force
-          Copy-Item minhook_bin/include/MinHook.h deps/minhook/include/
-          Copy-Item minhook_bin/lib/libMinHook.x86.lib deps/minhook/lib/
+          Copy-Item minhook_lib/include/MinHook.h deps/minhook/include/
+          Copy-Item minhook_lib/lib/libMinHook.x86.lib deps/minhook/lib/
         shell: pwsh
       -
         name: Install miniz
         run: |
-          $url = "https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip"
+          $url = "https://github.com/richgel999/miniz/releases/download/3.1.1/miniz-3.1.1.zip"
           Invoke-WebRequest -Uri $url -OutFile miniz.zip
           Expand-Archive -Path miniz.zip -DestinationPath miniz_src
           New-Item -ItemType Directory -Path deps/miniz -Force
