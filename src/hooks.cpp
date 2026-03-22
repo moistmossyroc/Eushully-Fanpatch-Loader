@@ -52,6 +52,7 @@ static std::string NormalizeW(const wchar_t* path) {
 
 // Returns a virtual handle if filename is in a fanpatch, INVALID_HANDLE_VALUE otherwise.
 static HANDLE TryPatch(const std::string& name) {
+    if (PatchArchive::IsBlacklisted(name)) return INVALID_HANDLE_VALUE; // never serve blacklisted extensions
     if (!PatchArchive::Has(name)) return INVALID_HANDLE_VALUE;
     auto data = PatchArchive::Extract(name);
     if (data.empty()) return INVALID_HANDLE_VALUE;

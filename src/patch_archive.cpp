@@ -3,7 +3,23 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <unordered_set>
 #include <windows.h>
+
+// Extensions that will never be indexed or served — prevents the .fanpatch
+// mechanism from being used to deliver executable content.
+static const std::unordered_set<std::string> s_blacklist = {
+    ".EXE", ".DLL", ".SYS", ".COM", ".SCR",
+    ".BAT", ".CMD", ".PS1",
+    ".VBS", ".VBE", ".JS",  ".JSE", ".WSH", ".WSF",
+    ".MSI", ".MSP",
+    ".CPL", ".PIF"
+};
+
+static std::string GetExtension(const std::string& name) {
+    size_t dot = name.rfind('.');
+    return dot != std::string::npos ? name.substr(dot) : "";
+}
 
 std::vector<mz_zip_archive>                          PatchArchive::s_archives;
 std::vector<std::string>                             PatchArchive::s_names;
@@ -69,7 +85,9 @@ void PatchArchive::LoadAll(const std::wstring& gameDir) {
             if (mz_zip_reader_is_file_a_directory(&zip, j)) continue;
             char fname[512];
             mz_zip_reader_get_filename(&zip, j, fname, sizeof(fname));
-            s_index[Normalize(fname)] = { i, j, s_names[i] }; // intentional overwrite — last archive wins
+            std::string normalized = Normalize(fname);
+            if (s_blacklist.count(GetExtension(normalized))) continue; // skip blacklisted extensions
+            s_index[normalized] = { i, j, s_names[i] }; // intentional overwrite — last archive wins
         }
     }
 }
@@ -103,6 +121,10 @@ std::vector<uint8_t> PatchArchive::Extract(const std::string& filename) {
                                        result.data(), result.size(), 0))
         result.clear();
     return result;
+}
+
+bool PatchArchive::IsBlacklisted(const std::string& filename) {
+    return s_blacklist.count(GetExtension(Normalize(filename))) > 0;
 }
 
 void PatchArchive::Unload() {
