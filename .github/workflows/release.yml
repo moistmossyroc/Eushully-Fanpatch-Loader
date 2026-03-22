@@ -1,0 +1,47 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Install MinHook
+        run: |
+          $url = "https://github.com/TsudaKageyu/minhook/releases/download/v1.3.3/MinHook_133_bin.zip"
+          Invoke-WebRequest -Uri $url -OutFile minhook.zip
+          Expand-Archive -Path minhook.zip -DestinationPath minhook_bin
+          New-Item -ItemType Directory -Path deps/minhook/include -Force
+          New-Item -ItemType Directory -Path deps/minhook/lib -Force
+          Copy-Item minhook_bin/include/MinHook.h deps/minhook/include/
+          Copy-Item minhook_bin/lib/libMinHook.x86.lib deps/minhook/lib/
+        shell: pwsh
+      -
+        name: Install miniz
+        run: |
+          $url = "https://github.com/richgel999/miniz/releases/download/3.0.2/miniz-3.0.2.zip"
+          Invoke-WebRequest -Uri $url -OutFile miniz.zip
+          Expand-Archive -Path miniz.zip -DestinationPath miniz_src
+          New-Item -ItemType Directory -Path deps/miniz -Force
+          Copy-Item miniz_src/miniz.h deps/miniz/
+          Copy-Item miniz_src/miniz.c deps/miniz/
+        shell: pwsh
+      -
+        name: Configure
+        run: cmake -A Win32 -B build
+      -
+        name: Build
+        run: cmake --build build --config Release
+      -
+        name: Upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/Release/version.dll
