@@ -5,9 +5,8 @@
 #include <mutex>
 #include <cstdint>
 
-// Maps a dummy Win32 event HANDLE to an in-memory file buffer.
-// Supports sequential reads, seeking, and size queries so all common
-// file access patterns work regardless of file type (AGF, BIN, WAV, OGG...).
+// Backs a Win32 event HANDLE with an in-memory buffer to serve patched assets
+// without writing to disk. Supports reads, seeks, and size queries.
 class VFileTable {
 public:
     // Create a virtual handle wrapping the given data.

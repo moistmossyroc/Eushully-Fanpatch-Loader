@@ -60,6 +60,14 @@ Output: `build/Release/version.dll`
 
 ---
 
+## Security Note
+
+`version.dll` is loaded directly into the game process with full process privileges.
+Only use a copy obtained from the official project repository. A tampered DLL from
+an untrusted source could execute arbitrary code on your system.
+
+---
+
 ## Disclaimer
 
 This project was developed with the assistance of [Claude](https://claude.ai), an AI assistant made by Anthropic.

@@ -12,6 +12,7 @@ HANDLE VFileTable::Create(std::vector<uint8_t> data) {
     return h;
 }
 
+// Used externally to check if a handle belongs to us before other operations.
 bool VFileTable::Owns(HANDLE h) {
     std::lock_guard<std::mutex> lk(s_mutex);
     return s_table.count(h) > 0;
@@ -28,7 +29,7 @@ bool VFileTable::Read(HANDLE h, LPVOID buf, DWORD n, LPDWORD nRead) {
     if (got) memcpy(buf, vf.data.data() + vf.pos, got);
     vf.pos += got;
     if (nRead) *nRead = got;
-    return true; // TRUE + nRead==0 is the standard EOF signal
+    return true; // nRead==0 signals EOF to the caller
 }
 
 DWORD VFileTable::Seek(HANDLE h, LONG dist, DWORD method) {
@@ -36,18 +37,24 @@ DWORD VFileTable::Seek(HANDLE h, LONG dist, DWORD method) {
     auto it = s_table.find(h);
     if (it == s_table.end()) return INVALID_SET_FILE_POINTER;
 
-    VFile& vf   = it->second;
-    DWORD  size = static_cast<DWORD>(vf.data.size());
-    DWORD  newPos;
+    VFile& vf    = it->second;
+    LONG   size  = static_cast<LONG>(vf.data.size());
+
+    // Use signed arithmetic — casting a negative LONG to DWORD would wrap around.
+    LONG base;
     switch (method) {
-        case FILE_BEGIN:   newPos = static_cast<DWORD>(dist); break;
-        case FILE_CURRENT: newPos = vf.pos + static_cast<DWORD>(dist); break;
-        case FILE_END:     newPos = size   + static_cast<DWORD>(dist); break;
+        case FILE_BEGIN:   base = 0;                          break;
+        case FILE_CURRENT: base = static_cast<LONG>(vf.pos); break;
+        case FILE_END:     base = size;                       break;
         default:           return INVALID_SET_FILE_POINTER;
     }
+
+    LONG newPos = base + dist;
+    if (newPos < 0)    newPos = 0;
     if (newPos > size) newPos = size;
-    vf.pos = newPos;
-    return newPos;
+
+    vf.pos = static_cast<DWORD>(newPos);
+    return vf.pos;
 }
 
 DWORD VFileTable::Size(HANDLE h) {
