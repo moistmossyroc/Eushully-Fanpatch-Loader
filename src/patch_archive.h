@@ -18,6 +18,7 @@ public:
     static bool                  Has(const std::string& filename);
     static std::vector<uint8_t>  Extract(const std::string& filename);
     static void                  Unload();
+    static bool                  IsBlacklisted(const std::string& filename);
 
 private:
     static std::string Normalize(const std::string& name);
